@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Modération{% endblock %}
+{% block bodyclass %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main class="admin-main">
+  <h1>File de modération</h1>
+  <p>Masquer un signalement abusif. Ban appareil : 24 h ou 7 j (audit).</p>
+  <table id="mod-table"><thead><tr><th>Heure</th><th>Type</th><th>Statut</th><th>Confiance</th><th>Abus</th><th></th></tr></thead><tbody></tbody></table>
+</main>
+<script src="/static/js/admin.js"></script>
+{% endblock %}
+{% block scripts %}{% endblock %}

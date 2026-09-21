@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Monitoring — admin{% endblock %}
+{% block bodyclass %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main class="admin-main">
+  <h1>Monitoring</h1>
+  {% if metrics.alert_kind == "critical" %}
+  <div class="alert-critical">{{ metrics.alert }}</div>
+  {% elif metrics.alert_kind == "warn" %}
+  <div class="alert-warn">{{ metrics.alert }}</div>
+  {% else %}
+  <p class="hint">Seuil de masse critique : les 7 indicateurs doivent être vrais (ET). Rien ne s’active tout seul. Pour payer, passe par Monétisation.</p>
+  {% endif %}
+  <section class="cards">
+    <article><h3>DAU aujourd’hui</h3><p class="num">{{ metrics.dau }}</p></article>
+    <article><h3>Pointe ~5 min</h3><p class="num">{{ metrics.concurrent_approx }}</p></article>
+    <article><h3>P50 pointe 14 j</h3><p class="num">{{ metrics.peak_concurrent_p50_14d }}</p></article>
+    <article><h3>Rétention J7</h3><p class="num">{{ metrics.retention_d7 }}</p></article>
+    <article><h3>Devices</h3><p class="num">{{ metrics.devices_total }}</p></article>
+    <article><h3>Téléphones vérifiés</h3><p class="num">{{ metrics.phones_verified }}</p></article>
+    <article><h3>Signalements (jour)</h3><p class="num">{{ metrics.reports_today }}</p></article>
+    <article><h3>Paywall</h3><p class="num">{{ "ON" if metrics.monetization_enabled else "OFF" }}</p></article>
+  </section>
+  <h2>Indicateurs de dépendance (éditables en base <code>business_thresholds</code>)</h2>
+  <table>
+    <thead><tr><th>Clé</th><th>Valeur</th><th>Seuil</th><th>OK ?</th></tr></thead>
+    <tbody>
+    {% for k, c in metrics.checks.items() %}
+      <tr><td>{{ k }}</td><td>{{ c.value }}</td><td>{{ c.threshold }}</td><td>{{ "oui" if c.ok else "non" }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h2>Volume par commune (aujourd’hui)</h2>
+  <ul>
+    {% for row in metrics.reports_by_commune %}
+    <li>{{ cmap.get(row.commune_id, "Hors commune") }} : {{ row.n }}</li>
+    {% else %}
+    <li>Pas encore de volume aujourd’hui (les seed historiques sont dans le tableau 14 j).</li>
+    {% endfor %}
+  </ul>
+  <h2>Volume par axe</h2>
+  <ul>
+    {% for row in metrics.reports_by_axis %}
+    <li>{{ amap.get(row.axis_id, "Hors axe") }} : {{ row.n }}</li>
+    {% else %}
+    <li>Aucun rattachement d’axe pour l’instant.</li>
+    {% endfor %}
+  </ul>
+  <h2>14 derniers jours</h2>
+  <table>
+    <thead><tr><th>Jour</th><th>DAU</th><th>Pointe</th><th>Reports</th><th>J7</th></tr></thead>
+    <tbody>
+    {% for h in metrics.history %}
+      <tr><td>{{ h.day }}</td><td>{{ h.dau }}</td><td>{{ h.peak }}</td><td>{{ h.reports }}</td><td>{{ h.retention_d7 }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</main>
+{% endblock %}

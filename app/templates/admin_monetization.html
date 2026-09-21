@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Monétisation{% endblock %}
+{% block bodyclass %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main class="admin-main">
+  <h1>Monétisation</h1>
+  <p class="warn-banner">Les signalements et la carte de base restent gratuits. L’algorithme de seuil <strong>n’active rien</strong>. Deux étapes : TOTP (si activé) + saisie CONFIRMER.</p>
+  <p>État actuel : <strong>{{ "activé" if flags.monetization_enabled else "éteint (gratuit total)" }}</strong></p>
+  {% if metrics.all_met %}
+  <div class="alert-critical">{{ metrics.alert }}</div>
+  {% endif %}
+  <form id="flag-form">
+    <label>Activer <input type="checkbox" id="en" {% if flags.monetization_enabled %}checked{% endif %} /></label>
+    <label>TOTP <input id="totp" /></label>
+    <label>Tape CONFIRMER <input id="confirm" placeholder="CONFIRMER" /></label>
+    <button class="btn primary" type="submit">Enregistrer</button>
+  </form>
+  <p class="hint" id="flag-msg"></p>
+</main>
+<script>
+document.getElementById("flag-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const r = await fetch("/api/v1/admin/flags/monetization", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      enabled: document.getElementById("en").checked,
+      totp: document.getElementById("totp").value,
+      confirm: document.getElementById("confirm").value
+    })
+  });
+  const d = await r.json();
+  document.getElementById("flag-msg").textContent = r.ok ? "Enregistré. " + (d.note || "") : (d.error && d.error.message) || "Erreur";
+});
+</script>
+{% endblock %}
+{% block scripts %}{% endblock %}

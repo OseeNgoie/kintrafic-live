@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Admin — connexion{% endblock %}
+{% block bodyclass %}admin{% endblock %}
+{% block body %}
+<main class="admin-login">
+  <h1>KinTrafic Live — Administration</h1>
+  <p>Accès par mot de passe haché. Ce n’est pas une URL secrète.</p>
+  <form method="post" action="/admin/login">
+    <label>Identifiant <input name="login" autocomplete="username" required /></label>
+    <label>Mot de passe <input name="password" type="password" autocomplete="current-password" required /></label>
+    {% if totp_required %}
+    <label>Code TOTP <input name="totp" inputmode="numeric" /></label>
+    {% else %}
+    <p class="hint">TOTP désactivé en local (ADMIN_TOTP_REQUIRED=false). Active-le en production.</p>
+    <input type="hidden" name="totp" value="" />
+    {% endif %}
+    <button class="btn primary" type="submit">Entrer</button>
+  </form>
+</main>
+{% endblock %}

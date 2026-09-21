@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Paiements{% endblock %}
+{% block bodyclass %}admin{% endblock %}
+{% block body %}
+{% include "admin_nav.html" %}
+<main class="admin-main">
+  <h1>Paiements Mobile Money</h1>
+  <p>Machine à états : pending → success/failed, timeout 15 min, grant manuel (audit + motif). Mock en local.</p>
+  <table id="pay-table"><thead><tr><th>Réf</th><th>Opérateur</th><th>MSISDN</th><th>État</th><th>Fin</th></tr></thead><tbody></tbody></table>
+</main>
+<script>
+fetch("/api/v1/admin/payments").then(r => r.json()).then(d => {
+  const tb = document.querySelector("#pay-table tbody");
+  if (!d.payments.length) {
+    tb.innerHTML = "<tr><td colspan=5>Aucun paiement (normal tant que le module est off).</td></tr>";
+    return;
+  }
+  tb.innerHTML = d.payments.map(p => `<tr><td>${p.external_ref}</td><td>${p.provider}</td><td>${p.msisdn}</td><td>${p.status}</td><td>${p.period_end || "—"}</td></tr>`).join("");
+});
+</script>
+{% endblock %}
+{% block scripts %}{% endblock %}

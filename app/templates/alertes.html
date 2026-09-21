@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Alertes — KinTrafic Live{% endblock %}
+{% block body %}
+<main class="legal-page">
+  <p><a href="/">← Carte</a></p>
+  <h1>Incidents majeurs</h1>
+  <p>Accidents et inondations suffisamment confirmés. Pas d’alerte push sur les contrôles / barrages.</p>
+  <ul id="alert-list"><li>Chargement…</li></ul>
+  <p id="gate" class="hint"></p>
+</main>
+<script src="/static/js/app.js"></script>
+<script>
+  KT.api("/api/v1/alerts").then(d => {
+    const ul = document.getElementById("alert-list");
+    if (!d.alerts.length) {
+      ul.innerHTML = "<li>Aucun incident majeur confirmé pour le moment.</li>";
+    } else {
+      ul.innerHTML = d.alerts.map(a => `<li>${a.label} — ${new Date(a.created_at).toLocaleTimeString("fr-FR")}</li>`).join("");
+    }
+    if (d.gated) document.getElementById("gate").textContent = "Historique élargi réservé au premium. Les 3 plus récents restent visibles. Signaler et la carte restent gratuits.";
+  }).catch(() => {
+    document.getElementById("alert-list").innerHTML = "<li>Impossible de charger les alertes.</li>";
+  });
+</script>
+{% endblock %}
+{% block scripts %}{% endblock %}

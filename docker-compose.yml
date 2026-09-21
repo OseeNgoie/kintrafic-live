@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kintrafic
+      POSTGRES_PASSWORD: kintrafic
+      POSTGRES_DB: kintrafic
+    ports:
+      - "5432:5432"
+    volumes:
+      - kintrafic_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kintrafic -d kintrafic"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kintrafic_pg:

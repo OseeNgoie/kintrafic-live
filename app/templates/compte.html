@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Compte — KinTrafic Live{% endblock %}
+{% block body %}
+<main class="legal-page">
+  <p><a href="/">← Carte</a></p>
+  <h1>Compte</h1>
+  <p id="me-status">Chargement…</p>
+  <section>
+    <h2>Numéro (optionnel)</h2>
+    <p>Utile plus tard pour Mobile Money. Pas d’e-mail.</p>
+    <label>Téléphone +243 <input id="phone" inputmode="tel" placeholder="+2438…" /></label>
+    <button class="btn" type="button" id="otp-req">Recevoir un code</button>
+    <label>Code <input id="otp" inputmode="numeric" maxlength="6" /></label>
+    <button class="btn primary" type="button" id="otp-ok">Lier le numéro</button>
+    <p class="hint" id="otp-hint"></p>
+  </section>
+  <section>
+    <h2>Géolocalisation</h2>
+    <p>Le GPS se coupe dès que tu quittes l’écran. Pour retirer l’autorisation : réglages du navigateur (Chrome → Informations du site → Position).</p>
+  </section>
+  <section id="pay-box" class="hidden">
+    <h2>Premium</h2>
+    <p>Visible seulement si la monétisation est activée par l’éditeur. Sinon, tout reste gratuit.</p>
+  </section>
+  <section>
+    <h2>Documents</h2>
+    <p><a href="/legal/cgu">CGU</a> · <a href="/legal/confidentialite">Confidentialité</a></p>
+    <button class="btn ghost" type="button" id="btn-del">Supprimer / anonymiser mon compte</button>
+  </section>
+</main>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/compte.js"></script>
+{% endblock %}
+{% block scripts %}{% endblock %}

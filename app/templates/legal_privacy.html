@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Confidentialité — KinTrafic Live{% endblock %}
+{% block body %}
+<main class="legal-page">
+  <p><a href="/">← Carte</a></p>
+  <h1>Politique de confidentialité</h1>
+  <p>Version {{ privacy_version }}. Cadre : <strong>loi n° 23/010 du 13 juin 2023</strong> relative à la protection des données à caractère personnel (RDC).</p>
+  <h2>Responsable</h2>
+  <p>Osée Mwanza, éditeur personne physique de KinTrafic Live. Pour exercer tes droits (accès, rectification, effacement) : via l’écran Compte → supprimer mon compte, ou contact indiqué à la mise en production.</p>
+  <h2>Données traitées</h2>
+  <ul>
+    <li>Identifiant d’appareil et session (cookie httpOnly).</li>
+    <li>Acceptation CGU (version, horodatage, empreinte d’IP journalière, pas l’IP en clair au-delà de 30 jours).</li>
+    <li>Signalements : type, point, précision GPS, commune/axe dérivés, votes.</li>
+    <li>Numéro de téléphone uniquement si tu le lies (OTP).</li>
+    <li>Dernière position connue, écrasée, conservée 24 h maximum — jamais une trace continue, jamais une liste nominative dans l’admin.</li>
+  </ul>
+  <h2>Finalités et bases</h2>
+  <p>Consentement (CGU, géoloc à la demande, numéro). Intérêt légitime limité : anti-abus, statistiques agrégées (DAU, volumes par commune), sécurité. Pas de revente, pas d’export marketing des traces GPS, pas de publicité tierce sur la carte.</p>
+  <h2>Hébergement</h2>
+  <p>La base peut être hébergée dans l’Union européenne par défaut (transfert hors RDC). Ce transfert est mentionné ici ; une entité locale pourra le revoir.</p>
+  <h2>Durées</h2>
+  <p>Signalements actifs : 2 à 4 heures puis expiration. Votes et audit : conservation opérationnelle. Paiements et journal admin : pas de suppression physique. Compte : anonymisation des signalements (le point agrégé reste).</p>
+  <h2>Sous-traitants possibles</h2>
+  <p>Hébergeur VPS, agrégateur Mobile Money (quand le module est activé), envoi d’SMS OTP. Aucun agrégateur réel n’est branché au lancement (mode mock).</p>
+</main>
+{% endblock %}

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f3d2e" />
+  <meta name="description" content="Carte communautaire du trafic à Kinshasa. Signalements en direct, sans GPS en arrière-plan." />
+  <title>{% block title %}KinTrafic Live{% endblock %}</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="icon" href="/static/icon.svg" />
+  <link rel="apple-touch-icon" href="/static/icon.svg" />
+  {% block head %}{% endblock %}
+  <link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+  {% block body %}{% endblock %}
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/static/sw.js");
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

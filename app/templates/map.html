@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}KinTrafic Live — Kinshasa{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/vendor/leaflet.css" />
+{% endblock %}
+{% block body %}
+<div id="eula" class="eula hidden" role="dialog" aria-labelledby="eula-title">
+  <div class="eula-card">
+    <p class="brand">KinTrafic Live</p>
+    <h1 id="eula-title">Licence et confidentialité</h1>
+    <p class="lede">Avant d’ouvrir la carte, lis et accepte les conditions (version {{ eula_version }}). La géolocalisation n’est <strong>pas</strong> demandée maintenant.</p>
+    <div class="legal-scroll">
+      <h2>Ce que fait l’app</h2>
+      <p>KinTrafic Live affiche des signalements communautaires sur les axes de Kinshasa (embouteillage, panne de poids lourd, inondation, contrôle/barrage, accident). Ce sont des <strong>faits signalés par d’autres usagers</strong>, pas un conseil d’itinéraire ni une invitation à contourner un contrôle.</p>
+      <h2>GPS</h2>
+      <p>Aucun suivi en arrière-plan. La position n’est demandée que si tu appuies sur « Me situer » ou « Signaler ». Tu peux refuser : la carte reste lisible, centrée sur Gombe / boulevard du 30 Juin.</p>
+      <h2>Données (loi n° 23/010 du 13 juin 2023, RDC)</h2>
+      <p>Nous traitons un identifiant d’appareil, tes signalements et votes, et éventuellement un numéro si tu le lies. Pas de trace GPS continue. Politique complète :</p>
+      <p><a href="/legal/confidentialite" target="_blank" rel="noopener">Politique de confidentialité (obligatoire)</a> · <a href="/legal/cgu" target="_blank" rel="noopener">CGU</a></p>
+      <h2>Conduite</h2>
+      <p>Ne manipule pas le téléphone en roulant. Un passager ou un arrêt suffit.</p>
+    </div>
+    <div class="row-btns">
+      <a class="btn ghost" href="/legal/refus">Refuser</a>
+      <button class="btn primary" id="btn-accept" type="button">J’accepte</button>
+    </div>
+  </div>
+</div>
+
+<header class="topbar">
+  <strong>KinTrafic Live</strong>
+  <span class="chip" id="net-chip">Carte</span>
+  <a class="link" href="/compte">Compte</a>
+</header>
+<p class="drive-banner">Ne pas manipuler en roulant — faits communautaires seulement.</p>
+<div id="data-banner" class="info-banner hidden">Carte en mode économie de données. Les tuiles déjà vues restent sur le téléphone.</div>
+<div id="offline-banner" class="warn-banner hidden">Hors ligne — les signalements partiront au retour du réseau.</div>
+<div id="err-banner" class="err-banner hidden"></div>
+
+<div id="map" role="application" aria-label="Carte du trafic à Kinshasa"></div>
+
+<div class="fab-col">
+  <button type="button" class="fab" id="btn-locate" title="Me situer">Me situer</button>
+</div>
+
+<button type="button" class="btn-report" id="btn-report">Signaler</button>
+
+<div id="legend" class="legend">
+  <button type="button" class="legend-tog" id="legend-tog">Légende</button>
+  <ul id="legend-list" class="hidden">
+    {% for code, t in types.items() %}
+    <li><span class="dot" style="background:{{ t.color }}"></span> {{ t.label }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div id="sheet" class="sheet hidden"></div>
+<div id="toast" class="toast hidden"></div>
+<script>
+  window.KT = {
+    eulaVersion: "{{ eula_version }}",
+    privacyVersion: "{{ privacy_version }}",
+    defaultLat: {{ default_lat }},
+    defaultLng: {{ default_lng }},
+    bbox: {{ bbox | tojson }},
+    types: {{ types | tojson }}
+  };
+</script>
+{% endblock %}
+{% block scripts %}
+<script src="/static/vendor/leaflet.js"></script>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/map.js"></script>
+{% endblock %}

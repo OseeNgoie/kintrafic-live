@@ -1,0 +1,8 @@
+<nav class="admin-nav">
+  <strong>KinTrafic Admin</strong>
+  <a href="/admin/monitoring" class="{{ 'on' if nav=='monitoring' else '' }}">Monitoring</a>
+  <a href="/admin/moderation" class="{{ 'on' if nav=='moderation' else '' }}">Modération</a>
+  <a href="/admin/monetization" class="{{ 'on' if nav=='monetization' else '' }}">Monétisation</a>
+  <a href="/admin/payments" class="{{ 'on' if nav=='payments' else '' }}">Paiements</a>
+  <form method="post" action="/admin/logout" class="inline"><button class="btn ghost" type="submit">Quitter</button></form>
+</nav>
