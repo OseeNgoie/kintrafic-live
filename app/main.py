@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.db import Base, SessionLocal, enable_postgis, engine, wait_for_db
+from app import db as database
 from app.errors import ApiError, api_error_handler
 from app.routers import admin, alerts, billing, pages, reports, session, tiles, traffic
 from app.seed import bootstrap_data
@@ -21,22 +21,33 @@ from app.veille import maybe_run_veille
 async def lifespan(app: FastAPI):
     settings = get_settings()
     Path(settings.tile_cache_dir).mkdir(parents=True, exist_ok=True)
-    wait_for_db()
-    enable_postgis()
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        bootstrap_data(db)
-        maybe_run_veille(db)
-    finally:
-        db.close()
-
+    app.state.db_ready = False
     stop = asyncio.Event()
 
+    def boot() -> None:
+        database.wait_for_db()
+        database.enable_postgis()
+        database.Base.metadata.create_all(bind=database.engine)
+        session = database.SessionLocal()
+        try:
+            bootstrap_data(session)
+            maybe_run_veille(session)
+        finally:
+            session.close()
+        app.state.db_ready = True
+        print("kintrafic-live: schema and seed ready", flush=True)
+
+    boot_task = asyncio.create_task(asyncio.to_thread(boot))
+
     async def ticker():
+        try:
+            await boot_task
+        except Exception as exc:  # noqa: BLE001
+            print(f"kintrafic-live: boot failed: {exc}", flush=True)
+            return
         while not stop.is_set():
             try:
-                db2 = SessionLocal()
+                db2 = database.SessionLocal()
                 try:
                     run_tick(db2)
                 finally:
@@ -48,10 +59,13 @@ async def lifespan(app: FastAPI):
             except asyncio.TimeoutError:
                 continue
 
-    task = asyncio.create_task(ticker())
+    tick_task = asyncio.create_task(ticker())
+    # Yield immediately so uvicorn already listens on PORT (/health) during DB wait/create.
     yield
     stop.set()
-    task.cancel()
+    tick_task.cancel()
+    if not boot_task.done():
+        boot_task.cancel()
 
 
 app = FastAPI(title="KinTrafic Live", lifespan=lifespan)
@@ -68,8 +82,12 @@ app.include_router(traffic.router)
 
 
 @app.get("/health")
-def health():
-    return {"ok": True, "service": "kintrafic-live"}
+def health(request: Request):
+    return {
+        "ok": True,
+        "service": "kintrafic-live",
+        "db": bool(getattr(request.app.state, "db_ready", False)),
+    }
 
 
 @app.get("/admin")

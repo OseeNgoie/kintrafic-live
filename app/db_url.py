@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 
 
 def sqlalchemy_url(raw: str) -> str:
@@ -33,3 +33,15 @@ def with_connect_timeout(url: str, seconds: int = 8) -> str:
     return urlunsplit(
         (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
     )
+
+
+def database_name(url: str) -> str:
+    path = urlsplit(url).path.lstrip("/")
+    if not path:
+        return "postgres"
+    return unquote(path.split("/", 1)[0])
+
+
+def with_database_name(url: str, name: str) -> str:
+    parts = urlsplit(url)
+    return urlunsplit((parts.scheme, parts.netloc, "/" + name, parts.query, parts.fragment))

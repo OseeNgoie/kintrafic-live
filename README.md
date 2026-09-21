@@ -57,7 +57,7 @@ Le service **Crashed** si le domaine proxy vers un port où uvicorn n’écoute 
 4. **Variables** → `PUBLIC_ORIGIN=https://….up.railway.app` (même URL, pas de `/` à la fin) → **Redeploy**.
 5. Vérifie `https://….up.railway.app/health` → `{"ok":true,"service":"kintrafic-live"}`.
 
-Postgres Railway : laisse `DATABASE_URL` tel que fourni (`postgresql://` ou `postgres://`). L’app attend la base, réécrit en `postgresql+psycopg://`, puis `CREATE EXTENSION postgis` si le rôle le peut (plugin PostGIS **Online**).
+Postgres Railway : `DATABASE_URL` doit venir du plugin **PostGIS** (`${{postgis.DATABASE_URL}}` / référence de variable du service PostGIS), pas une URL Postgres générique dont le dbname est `railway` si cette base n’existe pas. Si le dbname manque, l’app tente `CREATE DATABASE` (UTF8) via `postgres`/`template1`, sinon elle bascule sur `postgres`. `/health` écoute dès le start (même pendant l’attente DB).
 
 Ne mets **pas** de Start Command custom du type `uvicorn … --port 43147`. Le `CMD` du Dockerfile est `start.sh` (`0.0.0.0` + `$PORT`).
 
