@@ -65,15 +65,22 @@
     const city = L.latLngBounds([KT.bbox[1], KT.bbox[0]], [KT.bbox[3], KT.bbox[2]]);
     map.setMaxBounds(city.pad(0.35));
     map.fitBounds(city, { padding: [24, 24], maxZoom: 12 });
+    map.createPane("ktCommunes");
+    map.getPane("ktCommunes").style.zIndex = 350;
+    map.createPane("ktAxes");
+    map.getPane("ktAxes").style.zIndex = 450;
+    map.getPane("ktAxes").style.pointerEvents = "auto";
+    map.createPane("ktPoints");
+    map.getPane("ktPoints").style.zIndex = 550;
     L.tileLayer("/tiles/{z}/{x}/{y}.png", {
       minZoom: 10,
       maxZoom: 16,
-      attribution: "© OpenStreetMap contributeurs · fond mis en cache localement"
+      attribution: "© OpenStreetMap contributeurs · fond HOT OSM-FR mis en cache localement"
     }).addTo(map);
-    communesLayer = L.layerGroup().addTo(map);
-    axesLayer = L.layerGroup().addTo(map);
-    pointsLayer = L.layerGroup().addTo(map);
-    meLayer = L.layerGroup().addTo(map);
+    communesLayer = L.layerGroup({ pane: "ktCommunes" }).addTo(map);
+    axesLayer = L.layerGroup({ pane: "ktAxes" }).addTo(map);
+    pointsLayer = L.layerGroup({ pane: "ktPoints" }).addTo(map);
+    meLayer = L.layerGroup({ pane: "ktPoints" }).addTo(map);
     if (night) document.body.classList.add("night");
     map.on("click", (ev) => {
       inspectPoint(ev.latlng.lat, ev.latlng.lng);
@@ -97,10 +104,23 @@
   }
 
   function axisStyle(code) {
-    if (code === "verifie") return { color: "#34f5c5", weight: 6, opacity: 0.92, dashArray: null };
-    if (code === "signale") return { color: "#ffb020", weight: 5, opacity: 0.88, dashArray: "10 6" };
-    if (code === "conteste") return { color: "#fb7185", weight: 5, opacity: 0.7, dashArray: "4 8" };
-    return { color: "#6b7c99", weight: 4, opacity: 0.55, dashArray: "2 10" };
+    const base = { pane: "ktAxes", lineCap: "round", lineJoin: "round", interactive: true };
+    if (code === "verifie") return Object.assign({ color: "#34f5c5", weight: 9, opacity: 1, dashArray: null }, base);
+    if (code === "signale") return Object.assign({ color: "#ffb020", weight: 8, opacity: 0.98, dashArray: "14 7" }, base);
+    if (code === "conteste") return Object.assign({ color: "#fb7185", weight: 8, opacity: 0.9, dashArray: "6 8" }, base);
+    return Object.assign({ color: "#9eb0c8", weight: 7, opacity: 0.88, dashArray: "5 8" }, base);
+  }
+
+  function axisCasing(code) {
+    return {
+      pane: "ktAxes",
+      color: "#041018",
+      weight: (axisStyle(code).weight || 7) + 5,
+      opacity: 0.75,
+      lineCap: "round",
+      lineJoin: "round",
+      interactive: false
+    };
   }
 
   async function refresh() {
@@ -134,7 +154,8 @@
     if (!communes || !communes.features) return;
     communes.features.forEach((f) => {
       const layer = L.geoJSON(f, {
-        style: { color: "#3d5a80", weight: 1, opacity: 0.35, fillColor: "#122033", fillOpacity: 0.08 },
+        pane: "ktCommunes",
+        style: { color: "#3d5a80", weight: 1, opacity: 0.28, fillColor: "#122033", fillOpacity: 0.04 },
         onEachFeature: (feat, lyr) => {
           lyr.bindTooltip(feat.properties.name, { sticky: true, className: "kt-tip" });
           lyr.on("click", (ev) => {
@@ -151,7 +172,9 @@
     axesLayer.clearLayers();
     (net.features || []).forEach((f) => {
       const p = f.properties;
+      L.geoJSON(f, { pane: "ktAxes", style: axisCasing(p.status_code), interactive: false }).addTo(axesLayer);
       const layer = L.geoJSON(f, {
+        pane: "ktAxes",
         style: axisStyle(p.status_code),
         onEachFeature: (feat, lyr) => {
           lyr.on("click", (ev) => {
@@ -171,6 +194,7 @@
       const p = f.properties;
       const verified = p.trust_label === "Vérifié";
       const m = L.circleMarker([lat, lng], {
+        pane: "ktPoints",
         radius: verified ? 11 : 9,
         color: verified ? "#e8fff7" : "rgba(255,255,255,.75)",
         weight: verified ? 3 : 2,

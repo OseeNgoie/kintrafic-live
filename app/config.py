@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     admin_totp_required: bool = False
     app_port: int = 43147
     public_origin: str = "http://127.0.0.1:43147"
-    tile_upstream: str = "https://basemaps.cartocdn.com/rastertiles/voyager"
+    tile_upstream: str = "https://a.tile.openstreetmap.fr/hot"
     mock_payments: bool = True
     mock_otp: bool = True
     seed_demo: bool = True

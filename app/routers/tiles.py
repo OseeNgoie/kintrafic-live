@@ -31,7 +31,10 @@ async def tiles(z: int, x: int, y: int):
     url = f"{settings.tile_upstream}/{z}/{x}/{y}.png"
     try:
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            r = await client.get(url, headers={"User-Agent": "KinTraficLive/1.0 (tile cache; contact: local-dev)"})
+            r = await client.get(
+                url,
+                headers={"User-Agent": "KinTraficLive/1.0 (https://127.0.0.1:43147; tile cache for Kinshasa PWA)"},
+            )
             if r.status_code == 200 and r.content[:8] == b"\x89PNG\r\n\x1a\n":
                 dest.write_bytes(r.content)
                 return Response(content=r.content, media_type="image/png", headers={"Cache-Control": "public, max-age=2592000"})

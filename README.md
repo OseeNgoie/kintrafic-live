@@ -45,7 +45,7 @@ Les signalements de démo (30 Juin, Lumumba, Masina, Matadi, Ndjili…) et 14 jo
 
 ### Tuiles
 
-Les clients parlent à `/tiles/{z}/{x}/{y}.png` (cache disque `data/tiles/` + cache PWA). L’amont par défaut est Carto Voyager (données OSM). En production, pointe `TILE_UPSTREAM` vers un fond auto-hébergé ; ne pas exposer `tile.openstreetmap.org` aux téléphones.
+Les clients parlent à `/tiles/{z}/{x}/{y}.png` (cache disque `data/tiles/` + cache PWA). L’amont par défaut est le fond HOT d’OSM-France (données OSM), proxifié. Carto Voyager renvoie désormais un PNG « API KEY REQUIRED » : ne plus l’utiliser sans clé. En production, pointe `TILE_UPSTREAM` vers un fond auto-hébergé.
 
 ### Paiements
 
