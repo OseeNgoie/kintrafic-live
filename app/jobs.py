@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Device, FeatureFlags, Report, Subscription, UsageDaily, User, ViewportHit
 from app.security import utcnow
+from app.veille import maybe_run_veille
 
 
 def expire_reports(db: Session) -> int:
@@ -98,4 +99,9 @@ def run_tick(db: Session) -> dict:
     aggregate_today(db)
     flags = db.get(FeatureFlags, 1)
     db.commit()
-    return {"expired_reports": expired, "monetization_enabled": bool(flags and flags.monetization_enabled)}
+    veille = maybe_run_veille(db)
+    return {
+        "expired_reports": expired,
+        "monetization_enabled": bool(flags and flags.monetization_enabled),
+        "veille": veille,
+    }

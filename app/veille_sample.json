@@ -1,0 +1,37 @@
+[
+  {
+    "id": "sample-30juin-accident",
+    "lat": -4.305,
+    "lng": 15.313,
+    "text": "Accident signalé boulevard du 30 Juin vers Gombe — file ralentie. Mot-clé public, pas un témoin usager.",
+    "type_hint": "accident"
+  },
+  {
+    "id": "sample-poids-lourds",
+    "lat": -4.365,
+    "lng": 15.340,
+    "text": "Embouteillage route des Poids Lourds / Limete, poids lourds à l'arrêt.",
+    "type_hint": "congestion"
+  },
+  {
+    "id": "sample-kasavubu-flood",
+    "lat": -4.350,
+    "lng": 15.300,
+    "text": "Inondation avenue Kasa-Vubu après pluie, chaussée partiellement coupée.",
+    "type_hint": "flood"
+  },
+  {
+    "id": "sample-lumumba-travaux",
+    "lat": -4.350,
+    "lng": 15.350,
+    "text": "Travaux boulevard Lumumba, un filet fermé.",
+    "type_hint": "travaux"
+  },
+  {
+    "id": "sample-matadi-checkpoint",
+    "lat": -4.350,
+    "lng": 15.240,
+    "text": "Barrage / roulage route de Matadi, files lentes.",
+    "type_hint": "checkpoint"
+  }
+]

@@ -55,9 +55,10 @@
 <div id="legend" class="legend">
   <button type="button" class="legend-tog" id="legend-tog">Légende</button>
   <ul id="legend-list" class="hidden">
-    <li><span class="line nodata"></span> Pas de donnée (axe connu)</li>
-    <li><span class="line signale"></span> Signalé (peu de votes)</li>
-    <li><span class="line verifie"></span> Vérifié (votes)</li>
+    <li><span class="line fluide"></span> Fluide (profil / réel)</li>
+    <li><span class="line dense"></span> Dense</li>
+    <li><span class="line sature"></span> Saturé</li>
+    <li><span class="line nodata"></span> Trait pointillé = prévision / veille</li>
     {% for code, t in types.items() %}
     <li><span class="dot" style="background:{{ t.color }}"></span> {{ t.label }}</li>
     {% endfor %}

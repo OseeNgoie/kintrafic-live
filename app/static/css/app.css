@@ -197,6 +197,9 @@ body.map-app .legend .line {
 body.map-app .legend .line.nodata { background: #6b7c99; }
 body.map-app .legend .line.signale { background: #ffb020; }
 body.map-app .legend .line.verifie { background: #34f5c5; }
+body.map-app .legend .line.fluide { background: #34f5c5; }
+body.map-app .legend .line.dense { background: #ffb020; }
+body.map-app .legend .line.sature { background: #fb7185; }
 body.map-app .sheet {
   background: linear-gradient(180deg, rgba(12, 22, 38, 0.98), rgba(7, 12, 20, 0.98));
   color: #e8f4ff;
@@ -229,6 +232,9 @@ body.map-app .badge.pas_de_donnee, body.map-app .badge.hors_zone { background: #
 body.map-app .badge.signale, body.map-app .badge.sig { background: #3a2a10; color: #ffd27a; }
 body.map-app .badge.verifie, body.map-app .badge.ok { background: #10332a; color: #34f5c5; }
 body.map-app .badge.conteste { background: #3a1520; color: #fb7185; }
+body.map-app .badge.fluide { background: #10332a; color: #34f5c5; }
+body.map-app .badge.dense { background: #3a2a10; color: #ffd27a; }
+body.map-app .badge.sature { background: #3a1520; color: #fb7185; }
 body.map-app .hint { color: #9bb0c6; }
 body.map-app .btn { color: #e8f4ff; background: #1a2738; }
 body.map-app .btn.primary { background: #34f5c5; color: #04221a; }

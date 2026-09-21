@@ -12,9 +12,10 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.db import Base, SessionLocal, engine
 from app.errors import ApiError, api_error_handler
-from app.routers import admin, alerts, billing, pages, reports, session, tiles
+from app.routers import admin, alerts, billing, pages, reports, session, tiles, traffic
 from app.seed import bootstrap_data
 from app.jobs import run_tick
+from app.veille import maybe_run_veille
 
 
 @asynccontextmanager
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         bootstrap_data(db)
+        maybe_run_veille(db)
     finally:
         db.close()
 
@@ -66,6 +68,7 @@ app.include_router(alerts.router)
 app.include_router(billing.router)
 app.include_router(admin.router)
 app.include_router(tiles.router)
+app.include_router(traffic.router)
 
 
 @app.get("/health")

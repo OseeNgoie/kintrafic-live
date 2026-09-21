@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     default_lat: float = -4.305
     default_lng: float = 15.313  # Gombe / 30 Juin
 
+    veille_enabled: bool = True
+    veille_interval_sec: int = 900
+    veille_osm_notes: bool = True
+    veille_rss_urls: str = ""
+    veille_fallback_sample: bool = True
+    veille_min_interval_sec: int = 120
+    veille_snap_m: int = 120
+    veille_user_agent: str = "KinTraficLive/1.0 (veille-autonome; +http://127.0.0.1:43147)"
+
 
 @lru_cache
 def get_settings() -> Settings:

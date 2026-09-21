@@ -9,6 +9,7 @@ from geoalchemy2.functions import ST_AsGeoJSON, ST_Contains, ST_DistanceSphere, 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.baseline import profile_lookup
 from app.config import get_settings
 from app.db import get_db
 from app.deps import require_session
@@ -18,7 +19,9 @@ from app.models import AbuseFlag, Commune, Device, Report, ReportVote, RoadAxis,
 from app.rate_limit import limiter
 from app.schemas import AbuseIn, LocationIn, ReportCreate, VoteIn
 from app.security import utcnow
+from app.traffic_fusion import fuse_axis
 from app.trust import REPORT_TYPES, device_weight, report_trust, should_auto_hide, trust_label
+from app.veille import SOURCE_TAG
 
 router = APIRouter(prefix="/api/v1", tags=["reports"])
 
@@ -50,6 +53,8 @@ def _row_dict(report: Report, lng: float | None = None, lat: float | None = None
         "lat": lat,
         "axis_id": report.axis_id,
         "commune_id": report.commune_id,
+        "source": report.source or "community",
+        "expires_at": report.expires_at,
     }
 
 
@@ -111,13 +116,34 @@ def _network(db: Session):
     listing = []
     for axis, gj in axes_rows:
         summary = summarize_reports(by_axis.get(axis.id, []))
+        fused = fuse_axis(
+            axis_id=axis.id,
+            axis_name=axis.name,
+            reports=by_axis.get(axis.id, []),
+            baseline=profile_lookup(db, axis.id, now),
+            now=now,
+        )
         props = {
             "id": axis.id,
             "name": axis.name,
             "kind": "axis",
             **summary,
+            "congestion_code": fused["c"],
+            "congestion_label": fused["l"],
+            "fusion_src": fused["s"],
+            "fusion_src_label": fused["sl"],
+            "baseline_label": fused["baseline_label"],
         }
-        listing.append({"id": axis.id, "name": axis.name, "status_code": summary["status_code"], "status_label": summary["status_label"]})
+        listing.append(
+            {
+                "id": axis.id,
+                "name": axis.name,
+                "c": fused["c"],
+                "s": fused["s"],
+                "status_code": summary["status_code"],
+                "status_label": summary["status_label"],
+            }
+        )
         features.append(
             {
                 "type": "Feature",
@@ -132,7 +158,10 @@ def _network(db: Session):
         "features": features,
         "server_time": now.isoformat(),
         "legend": {
-            "pas_de_donnee": "Pas de donnée — axe connu, aucun signalement actif",
+            "fluide": "Fluide — profil horaire ou aucun incident",
+            "dense": "Dense — pointe ou incident",
+            "sature": "Saturé — pointe majeure ou signalement usager",
+            "pas_de_donnee": "Pas de signalement communautaire actif",
             "signale": "Signalé — un usager a posé un fait, peu ou pas de votes",
             "verifie": "Vérifié — confirmé par des votes",
             "conteste": "Contesté — votes contradictoires",
@@ -183,8 +212,18 @@ def inspect(
             if report.axis_id == near_axis.id and all(x.get("id") != str(report.id) for x in rows):
                 rows.append(_row_dict(report, lng_, lat_))
     summary = summarize_reports(rows)
+    fused = None
+    if near_axis:
+        axis_rows = [r for r in rows if r.get("axis_id") == near_axis.id]
+        fused = fuse_axis(
+            axis_id=near_axis.id,
+            axis_name=near_axis.name,
+            reports=axis_rows,
+            baseline=profile_lookup(db, near_axis.id, now),
+            now=now,
+        )
     street = near_axis.name if near_axis else "Voie non instrumentée"
-    return {
+    out = {
         "in_coverage": True,
         "lat": lat,
         "lng": lng,
@@ -193,8 +232,17 @@ def inspect(
         "distance_m": round(dist) if dist is not None else None,
         "commune": commune.name if commune else None,
         **summary,
-        "disclaimer": "Fait communautaire signalé ici. Ce n’est pas un conseil de circulation ni d’infraction. Pas de trafic Google inventé.",
+        "disclaimer": "Fusion communautaire + profil horaire Kinshasa. Ce n’est pas un conseil de circulation ni un trafic Google.",
     }
+    if fused:
+        out["congestion_code"] = fused["c"]
+        out["congestion_label"] = fused["l"]
+        out["fusion_src"] = fused["s"]
+        out["fusion_src_label"] = fused["sl"]
+        out["traffic_label"] = f"{fused['l']} · {fused['sl']}"
+        out["status_code"] = fused["c"]
+        out["status_label"] = fused["l"]
+    return out
 
 
 @router.get("/reports/viewport")
@@ -248,6 +296,8 @@ def viewport(
                     "axis_id": report.axis_id,
                     "kind": meta.get("kind", "trafic"),
                     "show_counts": (report.pos_votes + report.neg_votes) >= 3,
+                    "source": report.source or "community",
+                    "source_tag": SOURCE_TAG if (report.source or "") == "veille" else "Usager",
                 },
             }
         )
@@ -314,6 +364,7 @@ def create_report(body: ReportCreate, pair=Depends(require_session), db: Session
         status="active",
         trust=trust0,
         expires_at=now + timedelta(minutes=ttl),
+        source="community",
     )
     db.add(report)
     db.flush()
@@ -333,6 +384,8 @@ def get_report(report_id: str, pair=Depends(require_session), db: Session = Depe
     expired = report.status == "expired" or report.expires_at <= utcnow()
     meta = REPORT_TYPES.get(report.type_code, {})
     n = report.pos_votes + report.neg_votes
+    source = report.source or "community"
+    auto = source == "veille"
     return {
         "id": str(report.id),
         "type_code": report.type_code,
@@ -340,7 +393,7 @@ def get_report(report_id: str, pair=Depends(require_session), db: Session = Depe
         "lat": lat,
         "lng": lng,
         "trust": float(report.trust),
-        "trust_label": trust_label(float(report.trust), report.pos_votes, report.neg_votes, expired),
+        "trust_label": "Non vérifié (auto)" if auto and not expired else trust_label(float(report.trust), report.pos_votes, report.neg_votes, expired),
         "pos": report.pos_votes if n >= 3 else None,
         "neg": report.neg_votes if n >= 3 else None,
         "counts_hidden": n < 3,
@@ -349,7 +402,9 @@ def get_report(report_id: str, pair=Depends(require_session), db: Session = Depe
         "expires_at": report.expires_at.isoformat(),
         "commune": commune.name if commune else None,
         "axis": axis.name if axis else None,
-        "disclaimer": "Fait communautaire signalé ici. Ce n’est pas un conseil de circulation ni d’infraction.",
+        "source": source,
+        "source_tag": SOURCE_TAG if auto else "Signalement usager",
+        "disclaimer": (SOURCE_TAG + " — pas un signalement usager, pas du trafic Google.") if auto else "Fait communautaire signalé ici. Ce n’est pas un conseil de circulation ni d’infraction.",
         "kind": meta.get("kind", "trafic"),
     }
 

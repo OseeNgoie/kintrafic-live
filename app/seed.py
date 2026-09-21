@@ -9,7 +9,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.geo_data import COMMUNES, ROAD_AXES, box_wkt
+from app.baseline import seed_traffic_profiles
+from app.geo_data import COMMUNES, MAJOR_AXIS_NAMES, ROAD_AXES, box_wkt
 from app.models import (
     AdminUser,
     BusinessThresholds,
@@ -21,6 +22,7 @@ from app.models import (
     UsageDaily,
     User,
 )
+from app.schema_migrate import ensure_autonomy_schema
 from app.security import hash_password, totp_secret, utcnow
 from app.trust import REPORT_TYPES
 
@@ -46,8 +48,9 @@ def seed_geo(db: Session) -> None:
         geom = WKTElement(wkt, srid=4326)
         if existing:
             existing.geom = geom
+            existing.is_major = name in MAJOR_AXIS_NAMES
         else:
-            db.add(RoadAxis(name=name, geom=geom))
+            db.add(RoadAxis(name=name, geom=geom, is_major=name in MAJOR_AXIS_NAMES))
     db.flush()
 
 
@@ -210,9 +213,11 @@ def _ensure_condition_demos(db: Session, now) -> None:
 
 
 def bootstrap_data(db: Session) -> str | None:
+    ensure_autonomy_schema(db)
     seed_geo(db)
     totp = seed_admin(db)
     seed_flags(db)
+    seed_traffic_profiles(db)
     seed_demo(db)
     db.commit()
     return totp

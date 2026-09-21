@@ -38,6 +38,14 @@ def box_wkt(west: float, south: float, east: float, north: float) -> str:
     )
 
 
+MAJOR_AXIS_NAMES = frozenset(
+    {
+        "Boulevard du 30 Juin",
+        "Route des Poids Lourds",
+        "Avenue Kasa-Vubu",
+    }
+)
+
 # name, WKT LINESTRING — simplified traces for overlay, not cadastral centrelines
 ROAD_AXES: list[tuple[str, str]] = [
     (

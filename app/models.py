@@ -45,6 +45,7 @@ class RoadAxis(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), unique=True)
     geom = mapped_column(Geometry(geometry_type="LINESTRING", srid=4326), nullable=False)
+    is_major: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class User(Base):
@@ -148,9 +149,40 @@ class Report(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     hidden_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     hidden_reason: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    source: Mapped[str] = mapped_column(String(16), default="community", index=True)
+    external_key: Mapped[Optional[str]] = mapped_column(String(160), unique=True, nullable=True)
 
     commune: Mapped[Optional[Commune]] = relationship()
     axis: Mapped[Optional[RoadAxis]] = relationship()
+
+
+class AxisTrafficProfile(Base):
+    """Hourly heuristic congestion (Fluide / Dense / Saturé) per axis, Africa/Kinshasa weekday."""
+
+    __tablename__ = "axis_traffic_profiles"
+    __table_args__ = (UniqueConstraint("axis_id", "weekday", "hour"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    axis_id: Mapped[int] = mapped_column(Integer, ForeignKey("road_axes.id"), index=True)
+    weekday: Mapped[int] = mapped_column(SmallInteger)  # 0=lundi … 6=dimanche
+    hour: Mapped[int] = mapped_column(SmallInteger)  # 0–23 heure locale Kinshasa
+    congestion: Mapped[str] = mapped_column(String(16))  # fluide | dense | sature
+
+    axis: Mapped[RoadAxis] = relationship()
+
+
+class VeilleRun(Base):
+    __tablename__ = "veille_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(24), default="running")
+    feed: Mapped[str] = mapped_column(String(32), default="none")
+    fetched: Mapped[int] = mapped_column(Integer, default=0)
+    inserted: Mapped[int] = mapped_column(Integer, default=0)
+    skipped: Mapped[int] = mapped_column(Integer, default=0)
+    detail: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
 
 class ReportVote(Base):

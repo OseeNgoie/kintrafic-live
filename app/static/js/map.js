@@ -103,8 +103,12 @@
     pollTimer = null;
   }
 
-  function axisStyle(code) {
+  function axisStyle(code, src) {
     const base = { pane: "ktAxes", lineCap: "round", lineJoin: "round", interactive: true };
+    const dash = src === "user" ? null : src === "veille" ? "10 6" : "5 8";
+    if (code === "sature") return Object.assign({ color: "#fb7185", weight: 9, opacity: 1, dashArray: dash }, base);
+    if (code === "dense") return Object.assign({ color: "#ffb020", weight: 8, opacity: 0.98, dashArray: dash }, base);
+    if (code === "fluide") return Object.assign({ color: "#34f5c5", weight: 8, opacity: 0.92, dashArray: dash }, base);
     if (code === "verifie") return Object.assign({ color: "#34f5c5", weight: 9, opacity: 1, dashArray: null }, base);
     if (code === "signale") return Object.assign({ color: "#ffb020", weight: 8, opacity: 0.98, dashArray: "14 7" }, base);
     if (code === "conteste") return Object.assign({ color: "#fb7185", weight: 8, opacity: 0.9, dashArray: "6 8" }, base);
@@ -129,20 +133,21 @@
     const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].join(",");
     const err = document.getElementById("err-banner");
     try {
-      const [geo, net, communes] = await Promise.all([
+      const [geo, net, communes, global] = await Promise.all([
         KT.api("/api/v1/reports/viewport?bbox=" + encodeURIComponent(bbox)),
         KT.api("/api/v1/geo/network"),
-        KT.api("/api/v1/geo/communes")
+        KT.api("/api/v1/geo/communes"),
+        fetch("/api/traffic/status-global").then((r) => r.json())
       ]);
       err.classList.add("hidden");
       drawCommunes(communes);
-      drawAxes(net);
+      drawAxes(net, global);
       drawPoints(geo);
       const nSig = geo.features.length;
-      const nAxes = (net.features || []).filter((f) => f.properties.status_code !== "pas_de_donnee").length;
-      const nEmpty = (net.features || []).filter((f) => f.properties.status_code === "pas_de_donnee").length;
+      const city = (global.city && global.city.l) || "—";
+      const ns = (global.city && global.city.n) || {};
       document.getElementById("net-chip").textContent =
-        nSig + " pts · " + nAxes + " axes signalés · " + nEmpty + " sans donnée";
+        "Ville " + city + " · S" + (ns.s || 0) + "/D" + (ns.d || 0) + "/F" + (ns.f || 0) + " · " + nSig + " pts";
     } catch (e) {
       err.textContent = "Impossible de rafraîchir. " + e.message + " Réessayer.";
       err.classList.remove("hidden");
@@ -168,14 +173,23 @@
     });
   }
 
-  function drawAxes(net) {
+  function drawAxes(net, global) {
     axesLayer.clearLayers();
+    const byId = {};
+    (global && global.axes ? global.axes : []).forEach((a) => {
+      byId[a.i] = a;
+    });
     (net.features || []).forEach((f) => {
       const p = f.properties;
-      L.geoJSON(f, { pane: "ktAxes", style: axisCasing(p.status_code), interactive: false }).addTo(axesLayer);
+      const g = byId[p.id];
+      const code = (g && g.c) || p.congestion_code || p.status_code;
+      const src = (g && g.s) || p.fusion_src;
+      p.congestion_code = code;
+      p.fusion_src = src;
+      L.geoJSON(f, { pane: "ktAxes", style: axisCasing(code), interactive: false }).addTo(axesLayer);
       const layer = L.geoJSON(f, {
         pane: "ktAxes",
-        style: axisStyle(p.status_code),
+        style: axisStyle(code, src),
         onEachFeature: (feat, lyr) => {
           lyr.on("click", (ev) => {
             L.DomEvent.stopPropagation(ev);
@@ -205,7 +219,10 @@
         L.DomEvent.stopPropagation(ev);
         openReport(f.id);
       });
-      m.bindTooltip(p.label + " · " + p.trust_label, { className: "kt-tip" });
+      m.bindTooltip(
+        p.label + " · " + (p.source === "veille" ? p.source_tag || "Veille auto" : p.trust_label),
+        { className: "kt-tip" }
+      );
       m.addTo(pointsLayer);
     });
   }
@@ -229,10 +246,11 @@
     sheet.innerHTML = `
       <p class="sheet-kicker">Axe instrumenté</p>
       <h2>${p.name}</h2>
-      <p class="meta-row"><span class="k">Trafic / incident</span><span class="v badge ${p.status_code}">${p.traffic_label}</span></p>
+      <p class="meta-row"><span class="k">Congestion</span><span class="v badge ${p.congestion_code || p.status_code}">${p.congestion_label || p.traffic_label}</span></p>
+      <p class="meta-row"><span class="k">Source</span><span class="v">${p.fusion_src_label || p.fusion_src || "profil"}</span></p>
       ${condHtml(p.conditions)}
-      <p class="hint">${p.status_code === "pas_de_donnee" ? "Aucun signalement actif sur cet axe. Ce n’est pas « fluide » : on n’a juste pas de fait communautaire." : "Statut issu des signalements et des votes, pas d’un flux Google."}</p>
-      <p class="hint">Fait communautaire. Ce n’est pas un conseil de circulation ni d’infraction.</p>
+      <p class="hint">${p.fusion_src === "base" ? "Profil horaire Kinshasa (pointe 07–09 / 17–19). Un signalement usager remplace cette prévision jusqu’à expiration." : p.fusion_src === "veille" ? "Veille automatique — non vérifiée par un usager. Pas du trafic Google." : "Signalement usager actif : il prime sur le profil horaire."}</p>
+      <p class="hint">Ce n’est pas un conseil de circulation ni d’infraction.</p>
       <p><button class="btn ghost" type="button" id="close">Fermer</button></p>`;
     sheet.querySelector("#close").onclick = () => sheet.classList.add("hidden");
   }
@@ -253,7 +271,8 @@
       sheet.innerHTML = `
         <p class="sheet-kicker">${place}${near}</p>
         <h2>${street}</h2>
-        <p class="meta-row"><span class="k">Trafic / incident</span><span class="v badge ${d.status_code}">${d.traffic_label}</span></p>
+        <p class="meta-row"><span class="k">Congestion</span><span class="v badge ${d.congestion_code || d.status_code}">${d.congestion_label || d.traffic_label}</span></p>
+        ${d.fusion_src_label ? `<p class="meta-row"><span class="k">Source</span><span class="v">${d.fusion_src_label}</span></p>` : ""}
         ${condHtml(d.conditions)}
         <p class="hint">${d.disclaimer || ""}</p>
         ${reports ? "<p class='k'>Signalements proches</p><ul class='rep-list'>" + reports + "</ul>" : "<p class='hint'>Pas de signalement à proximité.</p>"}
@@ -277,8 +296,8 @@
         <p class="sheet-kicker">${d.commune || "Kinshasa"}${d.axis ? " · " + d.axis : ""}</p>
         <h2>${d.label}</h2>
         <p class="meta-row"><span class="k">Statut</span><span class="v badge ${d.trust_label === "Vérifié" ? "verifie" : "signale"}">${d.trust_label}</span></p>
-        <p class="hint">${d.disclaimer}</p>
-        <p class="hint">${d.counts_hidden ? "Pas encore assez de confirmations (votes)." : (d.pos + " toujours là / " + d.neg + " plus rien")}</p>
+        <p class="hint">${d.source_tag ? d.source_tag : ""} ${d.disclaimer}</p>
+        <p class="hint">${d.source === "veille" ? "La veille n’est pas un vote usager." : d.counts_hidden ? "Pas encore assez de confirmations (votes)." : (d.pos + " toujours là / " + d.neg + " plus rien")}</p>
         <div class="row-btns">
           <button class="btn primary" type="button" data-v="1">Toujours là</button>
           <button class="btn" type="button" data-v="-1">Plus rien</button>
