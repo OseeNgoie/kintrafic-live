@@ -1,6 +1,9 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.db_url import sqlalchemy_url
 
 
 class Settings(BaseSettings):
@@ -41,6 +44,16 @@ class Settings(BaseSettings):
     veille_min_interval_sec: int = 120
     veille_snap_m: int = 120
     veille_user_agent: str = "KinTraficLive/1.0 (veille-autonome; +http://127.0.0.1:43147)"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _sqlalchemy_database_url(cls, value: str) -> str:
+        return sqlalchemy_url(value)
+
+    @field_validator("public_origin", mode="before")
+    @classmethod
+    def _strip_trailing_slash(cls, value: str) -> str:
+        return (value or "").rstrip("/")
 
 
 @lru_cache

@@ -7,10 +7,9 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import text
 
 from app.config import get_settings
-from app.db import Base, SessionLocal, engine
+from app.db import Base, SessionLocal, enable_postgis, engine, wait_for_db
 from app.errors import ApiError, api_error_handler
 from app.routers import admin, alerts, billing, pages, reports, session, tiles, traffic
 from app.seed import bootstrap_data
@@ -22,11 +21,8 @@ from app.veille import maybe_run_veille
 async def lifespan(app: FastAPI):
     settings = get_settings()
     Path(settings.tile_cache_dir).mkdir(parents=True, exist_ok=True)
-    try:
-        with engine.begin() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    except Exception:
-        pass
+    wait_for_db()
+    enable_postgis()
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:

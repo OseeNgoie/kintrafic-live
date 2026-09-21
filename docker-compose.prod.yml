@@ -36,6 +36,7 @@ services:
       - .env
     environment:
       TZ: Africa/Kinshasa
+      PORT: "8000"
       APP_PORT: "8000"
       DATABASE_URL: postgresql+psycopg://kintrafic:${POSTGRES_PASSWORD:-kintrafic}@db:5432/kintrafic
     volumes:

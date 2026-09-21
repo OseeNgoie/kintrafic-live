@@ -47,6 +47,20 @@ Les signalements de démo (30 Juin, Lumumba, Masina, Matadi, Ndjili…) et 14 jo
 
 `localhost` et le Preview Cursor **ne sont pas** testables depuis un téléphone 4G : le GPS Chrome exige **HTTPS** public, et `127.0.0.1` sur Android désigne le téléphone lui-même.
 
+### Railway — port et domaine (à coller maintenant)
+
+Le service **Crashed** si le domaine proxy vers un port où uvicorn n’écoute pas, ou si `DATABASE_URL` n’est pas du psycopg.
+
+1. Service `kintrafic-live` → **Settings → Networking → Generate Service Domain**.
+2. **Port à taper : `8080`** (c’est le défaut Docker / `EXPOSE 8080`. Si Railway injecte `PORT`, l’app l’honore ; le domaine doit viser **ce** port, pas 43147).
+3. Après génération : copie l’URL `https://….up.railway.app` **sans slash final**.
+4. **Variables** → `PUBLIC_ORIGIN=https://….up.railway.app` (même URL, pas de `/` à la fin) → **Redeploy**.
+5. Vérifie `https://….up.railway.app/health` → `{"ok":true,"service":"kintrafic-live"}`.
+
+Postgres Railway : laisse `DATABASE_URL` tel que fourni (`postgresql://` ou `postgres://`). L’app attend la base, réécrit en `postgresql+psycopg://`, puis `CREATE EXTENSION postgis` si le rôle le peut (plugin PostGIS **Online**).
+
+Ne mets **pas** de Start Command custom du type `uvicorn … --port 43147`. Le `CMD` du Dockerfile est `start.sh` (`0.0.0.0` + `$PORT`).
+
 Guide pas à pas (hébergeur, Docker, PWA, APK) :
 
 `/cursor/stores/bc-82853373-28a2-4ec8-918f-55fb9b1128cd/docs/mise-en-ligne.md`
@@ -55,7 +69,7 @@ En résumé dans ce dépôt :
 
 1. Copier `.env.example` → `.env`, changer `SECRET_KEY` et `ADMIN_PASSWORD`, passer `PUBLIC_ORIGIN` à `https://ton-domaine`, `ADMIN_TOTP_REQUIRED=true`.
 2. **Railway, Render ou Fly.io** (Docker + Postgres/PostGIS géré) **ou** un VPS Ubuntu : `docker compose -f docker-compose.prod.yml --profile tls up -d` (Caddy termine le TLS ; uvicorn n’écoute que `127.0.0.1:8000`). PythonAnywhere n’est **pas** adapté (pas de PostGIS/Docker/veille).
-3. Fichiers production : `Dockerfile`, `docker-compose.prod.yml`, `Caddyfile`.
+3. Fichiers production : `Dockerfile`, `start.sh`, `railway.json`, `docker-compose.prod.yml`, `Caddyfile`.
 4. Sur le téléphone : Chrome → URL HTTPS → CGU → **Me situer** (vrai GPS) ; installer la **PWA** (ajouter à l’écran d’accueil) **avant** de reconstruire l’APK.
 5. L’APK démo demande l’URL au lancement (défaut `http://127.0.0.1:43147`). Reconstruire : `android-wrapper/` (`MainActivity.java`).
 
