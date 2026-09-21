@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}KinTrafic Live — Kinshasa{% endblock %}
+{% block bodyclass %}map-app{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="/static/vendor/leaflet.css" />
 {% endblock %}
@@ -11,9 +12,9 @@
     <p class="lede">Avant d’ouvrir la carte, lis et accepte les conditions (version {{ eula_version }}). La géolocalisation n’est <strong>pas</strong> demandée maintenant.</p>
     <div class="legal-scroll">
       <h2>Ce que fait l’app</h2>
-      <p>KinTrafic Live affiche des signalements communautaires sur les axes de Kinshasa (embouteillage, panne de poids lourd, inondation, contrôle/barrage, accident). Ce sont des <strong>faits signalés par d’autres usagers</strong>, pas un conseil d’itinéraire ni une invitation à contourner un contrôle.</p>
+      <p>KinTrafic Live affiche des signalements communautaires sur les axes de Kinshasa (embouteillage, panne de poids lourd, inondation, contrôle/barrage, accident, nids-de-poule, travaux). Ce sont des <strong>faits signalés par d’autres usagers</strong>, pas un conseil d’itinéraire ni une invitation à contourner un contrôle. Il n’y a pas de couche « trafic Google » inventée.</p>
       <h2>GPS</h2>
-      <p>Aucun suivi en arrière-plan. La position n’est demandée que si tu appuies sur « Me situer » ou « Signaler ». Tu peux refuser : la carte reste lisible, centrée sur Gombe / boulevard du 30 Juin.</p>
+      <p>Aucun suivi en arrière-plan. La position n’est demandée que si tu appuies sur « Me situer » ou « Signaler ». Tu peux refuser : la carte Kinshasa reste lisible tout de suite (axes + signalements), sans te placer à Gombe à ta place.</p>
       <h2>Données (loi n° 23/010 du 13 juin 2023, RDC)</h2>
       <p>Nous traitons un identifiant d’appareil, tes signalements et votes, et éventuellement un numéro si tu le lies. Pas de trace GPS continue. Politique complète :</p>
       <p><a href="/legal/confidentialite" target="_blank" rel="noopener">Politique de confidentialité (obligatoire)</a> · <a href="/legal/cgu" target="_blank" rel="noopener">CGU</a></p>
@@ -28,16 +29,22 @@
 </div>
 
 <header class="topbar">
-  <strong>KinTrafic Live</strong>
-  <span class="chip" id="net-chip">Carte</span>
+  <div class="brand-block">
+    <span class="brand-mark">KT</span>
+    <strong>KinTrafic Live</strong>
+  </div>
+  <span class="chip" id="net-chip">Carte ville</span>
   <a class="link" href="/compte">Compte</a>
 </header>
-<p class="drive-banner">Ne pas manipuler en roulant — faits communautaires seulement.</p>
+<p class="drive-banner">Ne pas manipuler en roulant — faits communautaires seulement, pas un GPS de navigation.</p>
 <div id="data-banner" class="info-banner hidden">Carte en mode économie de données. Les tuiles déjà vues restent sur le téléphone.</div>
 <div id="offline-banner" class="warn-banner hidden">Hors ligne — les signalements partiront au retour du réseau.</div>
 <div id="err-banner" class="err-banner hidden"></div>
+<div id="geo-banner" class="err-banner hidden" role="alert"></div>
 
 <div id="map" role="application" aria-label="Carte du trafic à Kinshasa"></div>
+
+<div class="hud-hint" id="hud-hint">Touche un axe ou un point pour le nom de la voie et l’état connu.</div>
 
 <div class="fab-col">
   <button type="button" class="fab" id="btn-locate" title="Me situer">Me situer</button>
@@ -48,6 +55,9 @@
 <div id="legend" class="legend">
   <button type="button" class="legend-tog" id="legend-tog">Légende</button>
   <ul id="legend-list" class="hidden">
+    <li><span class="line nodata"></span> Pas de donnée (axe connu)</li>
+    <li><span class="line signale"></span> Signalé (peu de votes)</li>
+    <li><span class="line verifie"></span> Vérifié (votes)</li>
     {% for code, t in types.items() %}
     <li><span class="dot" style="background:{{ t.color }}"></span> {{ t.label }}</li>
     {% endfor %}

@@ -36,7 +36,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 43147
 
 Ouvre [http://127.0.0.1:43147](http://127.0.0.1:43147).
 
-- Carte publique : accepter CGU + lien politique de confidentialité (loi 23/010). GPS seulement via **Me situer** / **Signaler**.
+- Carte publique : accepter CGU + lien politique de confidentialité (loi 23/010). GPS seulement via **Me situer** / **Signaler** (haute précision, vol de carte vers le vrai point — jamais un GPS Kinshasa inventé).
+- Dès l’ouverture : overlay des axes instrumentés (signalé / vérifié / pas de donnée). Types **nids-de-poule** et **travaux**. Toucher un axe ou un point pour le nom de voie et l’état connu.
 - Admin : [http://127.0.0.1:43147/admin/login](http://127.0.0.1:43147/admin/login) — identifiant `osee`, mot de passe `KinTrafic-Local-2026!` (haché Argon2, pas une URL secrète). TOTP off en local (`ADMIN_TOTP_REQUIRED=false`).
 - Santé : `GET /health`.
 
@@ -65,6 +66,18 @@ OTP mock : le code est renvoyé dans la réponse JSON (`123456`).
 pytest -q
 ```
 
-## Hors v1 (volontairement)
+## APK démo (sideload)
+
+Un APK debug signé (WebView autour de la PWA) se construit avec le SDK Android :
+
+```bash
+export ANDROID_HOME=/chemin/sdk
+cd android-wrapper
+gradle assembleDebug
+```
+
+Fichier produit : `android-wrapper/app/build/outputs/apk/debug/app-debug.apk`.
+
+Sur le téléphone : **Réglages → Sécurité → sources inconnues / installer des apps inconnues** (autorise le fichier / Chrome / Files), puis ouvre l’APK. Au premier lancement, saisis l’URL du serveur (`http://IP-LAN:43147` — `127.0.0.1` sur le téléphone n’est pas le VPS). Accepte la permission Localisation quand tu tapes **Me situer**.
 
 Navigation, vocal, GPS fond, Play Store, agrégateur Mobile Money réel, pack PMTiles 25–40 Mo (bouton prévu plus tard), 2e admin.

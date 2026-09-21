@@ -38,7 +38,7 @@ def box_wkt(west: float, south: float, east: float, north: float) -> str:
     )
 
 
-# name, WKT LINESTRING
+# name, WKT LINESTRING — simplified traces for overlay, not cadastral centrelines
 ROAD_AXES: list[tuple[str, str]] = [
     (
         "Boulevard du 30 Juin",
@@ -79,5 +79,37 @@ ROAD_AXES: list[tuple[str, str]] = [
     (
         "Avenue By-Pass / aéroport Ndjili",
         "LINESTRING(15.360 -4.390, 15.380 -4.400, 15.405 -4.410)",
+    ),
+    (
+        "Avenue du Commerce / Gombe",
+        "LINESTRING(15.305 -4.302, 15.318 -4.308, 15.328 -4.314)",
+    ),
+    (
+        "Boulevard Colonel Tshatshi",
+        "LINESTRING(15.268 -4.305, 15.275 -4.318, 15.282 -4.332)",
+    ),
+    (
+        "Avenue Tombalbaye",
+        "LINESTRING(15.298 -4.308, 15.305 -4.318, 15.312 -4.328)",
+    ),
+    (
+        "Avenue Wagenia",
+        "LINESTRING(15.318 -4.308, 15.322 -4.322, 15.326 -4.336)",
+    ),
+    (
+        "Route des Poids Lourds",
+        "LINESTRING(15.325 -4.355, 15.340 -4.365, 15.355 -4.375)",
+    ),
+    (
+        "Avenue Victoire",
+        "LINESTRING(15.280 -4.345, 15.292 -4.355, 15.305 -4.365)",
+    ),
+    (
+        "Route de Kimwenza",
+        "LINESTRING(15.270 -4.400, 15.265 -4.425, 15.258 -4.450)",
+    ),
+    (
+        "Avenue de la Justice",
+        "LINESTRING(15.308 -4.298, 15.315 -4.308, 15.322 -4.318)",
     ),
 ]

@@ -1,17 +1,19 @@
 from __future__ import annotations
 
+import json
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Query
 from geoalchemy2 import WKTElement
-from geoalchemy2.functions import ST_AsGeoJSON, ST_Contains, ST_DistanceSphere, ST_DWithin, ST_MakePoint, ST_SetSRID, ST_X, ST_Y
-from sqlalchemy import and_, func, select, text
+from geoalchemy2.functions import ST_AsGeoJSON, ST_Contains, ST_DistanceSphere, ST_MakePoint, ST_SetSRID, ST_X, ST_Y
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import get_db
 from app.deps import require_session
 from app.errors import ApiError
+from app.geo_state import summarize_reports
 from app.models import AbuseFlag, Commune, Device, Report, ReportVote, RoadAxis, ViewportHit
 from app.rate_limit import limiter
 from app.schemas import AbuseIn, LocationIn, ReportCreate, VoteIn
@@ -26,31 +28,173 @@ def _in_bbox(lng: float, lat: float) -> bool:
     return s.kin_bbox_west <= lng <= s.kin_bbox_east and s.kin_bbox_south <= lat <= s.kin_bbox_north
 
 
+def _active_reports(db: Session):
+    now = utcnow()
+    q = select(
+        Report,
+        func.ST_X(Report.geom).label("lng"),
+        func.ST_Y(Report.geom).label("lat"),
+    ).where(Report.status == "active", Report.expires_at > now)
+    return db.execute(q).all()
+
+
+def _row_dict(report: Report, lng: float | None = None, lat: float | None = None) -> dict:
+    return {
+        "id": str(report.id),
+        "type_code": report.type_code,
+        "trust": float(report.trust),
+        "pos": report.pos_votes,
+        "neg": report.neg_votes,
+        "expired": False,
+        "lng": lng,
+        "lat": lat,
+        "axis_id": report.axis_id,
+        "commune_id": report.commune_id,
+    }
+
+
 @router.get("/geo/communes")
 def communes(db: Session = Depends(get_db)):
-    rows = db.scalars(select(Commune).order_by(Commune.name)).all()
-    return {
-        "communes": [
+    rows = db.execute(
+        select(
+            Commune,
+            ST_AsGeoJSON(Commune.geom),
+            func.ST_X(func.ST_Centroid(Commune.geom)),
+            func.ST_Y(func.ST_Centroid(Commune.geom)),
+        ).order_by(Commune.name)
+    ).all()
+    features = []
+    listing = []
+    for c, gj, cx, cy in rows:
+        geom = json.loads(gj) if gj else None
+        listing.append(
             {
                 "id": c.id,
                 "name": c.name,
                 "slug": c.slug,
-                "bbox": db.execute(
-                    text(
-                        "SELECT ST_XMin(geom), ST_YMin(geom), ST_XMax(geom), ST_YMax(geom) FROM communes WHERE id=:id"
-                    ),
-                    {"id": c.id},
-                ).one(),
+                "center": [cx, cy],
             }
-            for c in rows
-        ]
-    }
+        )
+        features.append(
+            {
+                "type": "Feature",
+                "id": c.id,
+                "geometry": geom,
+                "properties": {"name": c.name, "slug": c.slug, "kind": "commune"},
+            }
+        )
+    return {"communes": listing, "type": "FeatureCollection", "features": features}
 
 
 @router.get("/geo/axes")
-def axes(db: Session = Depends(get_db)):
-    rows = db.scalars(select(RoadAxis).order_by(RoadAxis.name)).all()
-    return {"axes": [{"id": a.id, "name": a.name} for a in rows]}
+def axes(pair=Depends(require_session), db: Session = Depends(get_db)):
+    return _network(db)
+
+
+@router.get("/geo/network")
+def network(pair=Depends(require_session), db: Session = Depends(get_db)):
+    return _network(db)
+
+
+def _network(db: Session):
+    now = utcnow()
+    axes_rows = db.execute(
+        select(RoadAxis, ST_AsGeoJSON(RoadAxis.geom)).order_by(RoadAxis.name)
+    ).all()
+    reports = _active_reports(db)
+    by_axis: dict[int, list] = {}
+    for report, lng, lat in reports:
+        if report.axis_id:
+            by_axis.setdefault(report.axis_id, []).append(_row_dict(report, lng, lat))
+
+    features = []
+    listing = []
+    for axis, gj in axes_rows:
+        summary = summarize_reports(by_axis.get(axis.id, []))
+        props = {
+            "id": axis.id,
+            "name": axis.name,
+            "kind": "axis",
+            **summary,
+        }
+        listing.append({"id": axis.id, "name": axis.name, "status_code": summary["status_code"], "status_label": summary["status_label"]})
+        features.append(
+            {
+                "type": "Feature",
+                "id": axis.id,
+                "geometry": json.loads(gj) if gj else None,
+                "properties": props,
+            }
+        )
+    return {
+        "axes": listing,
+        "type": "FeatureCollection",
+        "features": features,
+        "server_time": now.isoformat(),
+        "legend": {
+            "pas_de_donnee": "Pas de donnée — axe connu, aucun signalement actif",
+            "signale": "Signalé — un usager a posé un fait, peu ou pas de votes",
+            "verifie": "Vérifié — confirmé par des votes",
+            "conteste": "Contesté — votes contradictoires",
+        },
+    }
+
+
+@router.get("/geo/inspect")
+def inspect(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    pair=Depends(require_session),
+    db: Session = Depends(get_db),
+):
+    limiter.check(f"insp:{pair[1].id}", 40, 60)
+    if not _in_bbox(lng, lat):
+        return {
+            "in_coverage": False,
+            "street_name": None,
+            "commune": None,
+            "distance_m": None,
+            "status_code": "hors_zone",
+            "status_label": "Hors de l’emprise Kinshasa",
+            "traffic_label": "Pas de donnée",
+            "conditions": [],
+            "reports": [],
+            "disclaimer": "Point hors de la zone couverte. Ce n’est pas un recentrage automatique sur Gombe.",
+        }
+    pt = ST_SetSRID(ST_MakePoint(lng, lat), 4326)
+    commune = db.scalars(select(Commune).where(func.ST_Contains(Commune.geom, pt)).limit(1)).first()
+    dist_expr = func.ST_DistanceSphere(RoadAxis.geom, pt)
+    axis_row = db.execute(select(RoadAxis, dist_expr.label("d")).order_by(dist_expr).limit(1)).first()
+    axis = axis_row[0] if axis_row else None
+    dist = float(axis_row.d) if axis_row and axis_row.d is not None else None
+    near_axis = axis if dist is not None and dist <= 90 else None
+
+    now = utcnow()
+    near_d = func.ST_DistanceSphere(Report.geom, pt)
+    nearby = db.execute(
+        select(Report, func.ST_X(Report.geom), func.ST_Y(Report.geom), near_d.label("d"))
+        .where(Report.status == "active", Report.expires_at > now, near_d < 120)
+        .order_by(near_d)
+        .limit(12)
+    ).all()
+    rows = [_row_dict(r, lng_, lat_) for r, lng_, lat_, _d in nearby]
+    if near_axis:
+        for report, lng_, lat_ in _active_reports(db):
+            if report.axis_id == near_axis.id and all(x.get("id") != str(report.id) for x in rows):
+                rows.append(_row_dict(report, lng_, lat_))
+    summary = summarize_reports(rows)
+    street = near_axis.name if near_axis else "Voie non instrumentée"
+    return {
+        "in_coverage": True,
+        "lat": lat,
+        "lng": lng,
+        "street_name": street,
+        "axis_id": near_axis.id if near_axis else None,
+        "distance_m": round(dist) if dist is not None else None,
+        "commune": commune.name if commune else None,
+        **summary,
+        "disclaimer": "Fait communautaire signalé ici. Ce n’est pas un conseil de circulation ni d’infraction. Pas de trafic Google inventé.",
+    }
 
 
 @router.get("/reports/viewport")
@@ -102,6 +246,7 @@ def viewport(
                     "expires_at": report.expires_at.isoformat(),
                     "commune_id": report.commune_id,
                     "axis_id": report.axis_id,
+                    "kind": meta.get("kind", "trafic"),
                     "show_counts": (report.pos_votes + report.neg_votes) >= 3,
                 },
             }
@@ -205,6 +350,7 @@ def get_report(report_id: str, pair=Depends(require_session), db: Session = Depe
         "commune": commune.name if commune else None,
         "axis": axis.name if axis else None,
         "disclaimer": "Fait communautaire signalé ici. Ce n’est pas un conseil de circulation ni d’infraction.",
+        "kind": meta.get("kind", "trafic"),
     }
 
 

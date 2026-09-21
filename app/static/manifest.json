@@ -3,8 +3,8 @@
   "short_name": "KinTrafic",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f3d2e",
-  "theme_color": "#0f3d2e",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
   "lang": "fr",
   "description": "Carte communautaire du trafic à Kinshasa",
   "icons": [
