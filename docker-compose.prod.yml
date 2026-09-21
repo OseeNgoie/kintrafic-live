@@ -1,0 +1,68 @@
+# Stack production minimale (app FastAPI + PostGIS).
+# Usage VPS :
+#   cp .env.example .env   # puis éditer (voir README / guide mise en ligne)
+#   docker compose -f docker-compose.prod.yml up -d
+# HTTPS (Caddy + Let’s Encrypt) :
+#   DOMAIN=ton-domaine.tld docker compose -f docker-compose.prod.yml --profile tls up -d
+#
+# Railway / Render / Fly.io : préfère le Dockerfile + Postgres géré ; ce fichier
+# sert surtout à un VPS Ubuntu. Ne publie pas Postgres sur Internet.
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kintrafic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kintrafic}
+      POSTGRES_DB: kintrafic
+      TZ: Africa/Kinshasa
+    volumes:
+      - kintrafic_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kintrafic -d kintrafic"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # Pas de ports: vers l’hôte — uniquement le réseau Compose.
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      TZ: Africa/Kinshasa
+      APP_PORT: "8000"
+      DATABASE_URL: postgresql+psycopg://kintrafic:${POSTGRES_PASSWORD:-kintrafic}@db:5432/kintrafic
+    volumes:
+      - kintrafic_tiles:/app/data/tiles
+    # Uvicorn n’écoute que en local sur l’hôte. TLS = Caddy (profil tls)
+    # ou le reverse-proxy de la plateforme (Railway / Render / Fly).
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  caddy:
+    image: caddy:2
+    profiles: ["tls"]
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  kintrafic_pg:
+  kintrafic_tiles:
+  caddy_data:
+  caddy_config:

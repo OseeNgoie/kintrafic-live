@@ -43,6 +43,22 @@ Ouvre [http://127.0.0.1:43147](http://127.0.0.1:43147).
 
 Les signalements de démo (30 Juin, Lumumba, Masina, Matadi, Ndjili…) et 14 jours de métriques sont semés au premier démarrage **si** `SEED_DEMO=true`. Le paywall **ne s’allume jamais tout seul**. Même sans démo, la carte n’est pas vide : le **profil horaire King-Kinshasa** colorie les axes.
 
+## Mise en ligne
+
+`localhost` et le Preview Cursor **ne sont pas** testables depuis un téléphone 4G : le GPS Chrome exige **HTTPS** public, et `127.0.0.1` sur Android désigne le téléphone lui-même.
+
+Guide pas à pas (hébergeur, Docker, PWA, APK) :
+
+`/cursor/stores/bc-82853373-28a2-4ec8-918f-55fb9b1128cd/docs/mise-en-ligne.md`
+
+En résumé dans ce dépôt :
+
+1. Copier `.env.example` → `.env`, changer `SECRET_KEY` et `ADMIN_PASSWORD`, passer `PUBLIC_ORIGIN` à `https://ton-domaine`, `ADMIN_TOTP_REQUIRED=true`.
+2. **Railway, Render ou Fly.io** (Docker + Postgres/PostGIS géré) **ou** un VPS Ubuntu : `docker compose -f docker-compose.prod.yml --profile tls up -d` (Caddy termine le TLS ; uvicorn n’écoute que `127.0.0.1:8000`). PythonAnywhere n’est **pas** adapté (pas de PostGIS/Docker/veille).
+3. Fichiers production : `Dockerfile`, `docker-compose.prod.yml`, `Caddyfile`.
+4. Sur le téléphone : Chrome → URL HTTPS → CGU → **Me situer** (vrai GPS) ; installer la **PWA** (ajouter à l’écran d’accueil) **avant** de reconstruire l’APK.
+5. L’APK démo demande l’URL au lancement (défaut `http://127.0.0.1:43147`). Reconstruire : `android-wrapper/` (`MainActivity.java`).
+
 ## Autonomie (baseline, veille, fusion)
 
 Sans signalement manuel, KinTrafic Live n’affiche plus une ville « sans donnée ». Trois couches, dans cet ordre :
@@ -129,6 +145,6 @@ gradle assembleDebug
 
 Fichier produit : `android-wrapper/app/build/outputs/apk/debug/app-debug.apk`.
 
-Sur le téléphone : **Réglages → Sécurité → sources inconnues / installer des apps inconnues** (autorise le fichier / Chrome / Files), puis ouvre l’APK. Au premier lancement, saisis l’URL du serveur (`http://IP-LAN:43147` — `127.0.0.1` sur le téléphone n’est pas le VPS). Accepte la permission Localisation quand tu tapes **Me situer**.
+Sur le téléphone : **Réglages → Sécurité → sources inconnues / installer des apps inconnues** (autorise le fichier / Chrome / Files), puis ouvre l’APK. Au premier lancement, saisis l’URL du serveur (`https://ton-domaine` une fois en ligne, ou `http://IP-LAN:43147` en Wi-Fi local — `127.0.0.1` sur le téléphone n’est pas le serveur). Accepte la permission Localisation quand tu tapes **Me situer**. Détail : section **Mise en ligne** ci-dessus et le guide store.
 
 Navigation, vocal, GPS fond, Play Store, agrégateur Mobile Money réel, pack PMTiles 25–40 Mo (bouton prévu plus tard), 2e admin.

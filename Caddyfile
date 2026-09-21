@@ -1,0 +1,9 @@
+# Reverse proxy HTTPS pour un VPS. Domaine via variable d’environnement DOMAIN.
+# Caddy obtient un certificat Let’s Encrypt tout seul (ports 80 et 443 ouverts).
+{$DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+	reverse_proxy app:8000
+}

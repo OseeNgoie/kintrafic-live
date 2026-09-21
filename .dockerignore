@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+data
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+android-wrapper
+*.md
+.cursor
+agent-tools
+htmlcov
+.coverage
